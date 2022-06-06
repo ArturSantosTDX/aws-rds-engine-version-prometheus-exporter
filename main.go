@@ -312,21 +312,39 @@ func getRDSInstances() ([]RDSInfo, error) {
 		},
 	}
 
-	RDSInstances, err := svc.DescribeDBInstances(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to describe DB instances: %w", err)
-	}
+	RDSInfos2 := make([]RDSInfo, 0)
+	svc.DescribeDBInstancesPages(input,
+		func(page *rds.DescribeDBInstancesOutput, lastPage bool) bool {
+			// fmt.Printf("################### Number of RDS: %v \n", len(page.DBInstances))
+			RDSInfos := make([]RDSInfo, len(page.DBInstances))
+			for i, RDSInstance := range page.DBInstances {
+				RDSInfos[i] = RDSInfo{
+					ClusterIdentifier: *RDSInstance.DBInstanceIdentifier,
+					Engine:            *RDSInstance.Engine,
+					EngineVersion:     *RDSInstance.EngineVersion,
+				}
+				RDSInfos2 = append(RDSInfos2, RDSInfos[i])
+			}
+			return true
+		})
 
-	RDSInfos := make([]RDSInfo, len(RDSInstances.DBInstances))
-	for i, RDSInstance := range RDSInstances.DBInstances {
-		RDSInfos[i] = RDSInfo{
-			ClusterIdentifier: *RDSInstance.DBInstanceIdentifier,
-			Engine:            *RDSInstance.Engine,
-			EngineVersion:     *RDSInstance.EngineVersion,
-		}
-	}
+	// fmt.Printf("################### Getting DB instances: %v\n", RDSInfos2)
 
-	return RDSInfos, nil
+	// RDSInstances, err := svc.DescribeDBInstances(input)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to describe DB instances: %w", err)
+	// }
+
+	// RDSInfos := make([]RDSInfo, len(RDSInstances.DBInstances))
+	// for i, RDSInstance := range RDSInstances.DBInstances {
+	// 	RDSInfos[i] = RDSInfo{
+	// 		ClusterIdentifier: *RDSInstance.DBInstanceIdentifier,
+	// 		Engine:            *RDSInstance.Engine,
+	// 		EngineVersion:     *RDSInstance.EngineVersion,
+	// 	}
+	// }
+
+	return RDSInfos2, nil
 }
 
 func readEOLInfoCSV() ([]MinimumSupportedInfo, error) {
